@@ -1,0 +1,118 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: example-gateway-class
+  labels:
+    example: grpc-routing
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: example-gateway
+  labels:
+    example: grpc-routing
+spec:
+  gatewayClassName: example-gateway-class
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: fake
+    example: grpc-routing
+  name: fake
+spec:
+  selector:
+    matchLabels:
+      app: fake
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: fake
+    spec:
+      containers:
+        - name: grpcsrv
+          image: nicholasjackson/fake-service:v0.26.2
+          env:
+            - name: ERROR_RATE
+              value: "0.5"
+            - name: ERROR_TYPE
+              value: "http_error"
+            - name: ERROR_CODE
+              value: "14"
+            - name: SERVICE_TYPE
+              value: "grpc"
+            - name: LISTEN_ADDR
+              value: "0.0.0.0:9000"
+          ports:
+            - containerPort: 9000
+              protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: fake
+    example: grpc-routing
+  name: fake
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9000
+      protocol: TCP
+      targetPort: 9000
+  selector:
+    app: fake
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: fake
+  labels:
+    example: grpc-routing
+spec:
+  parentRefs:
+    - name: example-gateway
+  hostnames:
+    - "grpc-example.com"
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: fake
+          port: 9000
+          weight: 1
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: fault-injection-abort
+  namespace: default
+spec:
+  # faultInjection:
+  #   abort:
+  #     grpcStatus: 14
+  #     percentage: 50
+  retry:
+    numRetries: 5
+    perRetry:
+      backOff:
+        baseInterval: 100ms
+        maxInterval: 10s
+      timeout: 250ms
+    retryOn:
+      triggers:
+      - unavailable
+      - retriable-status-codes
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: GRPCRoute
+    name: fake
