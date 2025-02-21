@@ -2,6 +2,21 @@
 
 This is an example of gRPC retry using Envoy Gateway. The fault injection in the fake-service is configured to return an error with a certain probability. Envoy Gateway will retry the request if an error occurs.
 
+```mermaid
+sequenceDiagram
+  participant C as Client
+  participant G as Gateway
+  participant S as Service
+  C->>G: Request
+  G->>S: Request
+  S->>G: Response 500
+  G->>S: Request
+  S->>G: Response 500
+  G->>S: Request
+  S->>G: Response 200
+  G->>C: Response 200
+```
+
 ## Setup
 
 Install Envoy Gateway in your cluster. Make sure the `envoyproxies.gateway` CRD is installed.
@@ -20,6 +35,34 @@ Deploy the sample gRPC application.
 
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/Nishikoh/envoy-sandbox/refs/heads/main/grpc-retry/grpc-routing.yaml
+```
+
+### dependencies
+
+```mermaid
+graph TD
+  subgraph Gateways
+    envoyProxy[EnvoyProxy: custom-envoy-proxy]
+    gatewayClass[GatewayClass: eg-example]
+    gateway[Gateway: eg-example]
+  end
+
+  subgraph Deployments & Services
+    fake[Deployment: fake]
+    fakeService[Service: fake]
+  end
+
+  subgraph Routing & Policies
+    grpcRoute[GRPCRoute: fake]
+    faultInjection[BackendTrafficPolicy: retry-policy]
+  end
+
+  gatewayClass --> envoyProxy
+  gateway --> gatewayClass
+  faultInjection --> grpcRoute
+  grpcRoute --> gateway
+
+  grpcRoute --> fakeService
 ```
 
 ## Verifying Retry Behavior
