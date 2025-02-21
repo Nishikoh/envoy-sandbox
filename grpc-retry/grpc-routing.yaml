@@ -1,7 +1,7 @@
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:
-  name: grpc-gateway
+  name: custom-envoy-proxy
   namespace: envoy-gateway-system
 spec:
   provider:
@@ -13,7 +13,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
-  name: example-gateway-class
+  name: eg-example
   labels:
     example: grpc-routing
 spec:
@@ -21,17 +21,17 @@ spec:
   parametersRef:
     group: gateway.envoyproxy.io
     kind: EnvoyProxy
-    name: grpc-gateway
+    name: custom-envoy-proxy
     namespace: envoy-gateway-system
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: example-gateway
+  name: eg-example
   labels:
     example: grpc-routing
 spec:
-  gatewayClassName: example-gateway-class
+  gatewayClassName: eg-example
   listeners:
     - name: http
       protocol: HTTP
@@ -97,7 +97,7 @@ metadata:
     example: grpc-routing
 spec:
   parentRefs:
-    - name: example-gateway
+    - name: eg-example
   hostnames:
     - "grpc-example.com"
   rules:
@@ -111,7 +111,7 @@ spec:
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: BackendTrafficPolicy
 metadata:
-  name: fault-injection-abort
+  name: retry-policy
   namespace: default
 spec:
   # faultInjection:

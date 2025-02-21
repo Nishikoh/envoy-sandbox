@@ -27,7 +27,7 @@ kubectl apply -f https://raw.githubusercontent.com/Nishikoh/envoy-sandbox/refs/h
 Verify the gRPC retry behavior in Envoy Gateway.
 
 ```shell
-export GATEWAY_HOST=$(kubectl get gateway/example-gateway -o jsonpath='{.status.addresses[0].value}')
+export GATEWAY_HOST=$(kubectl get gateway/eg-example -o jsonpath='{.status.addresses[0].value}')
 ```
 
 ```shell
